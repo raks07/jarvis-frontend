@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  # React Frontend
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis-react-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - frontend-network
+    environment:
+      - VITE_API_URL=http://localhost:3000
+      - VITE_PYTHON_API_URL=http://localhost:8000
+
+networks:
+  frontend-network:
+    driver: bridge
