@@ -1,3 +1,80 @@
+# Common
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.DS_Store
+*.log
+.vscode/
+.idea/
+node_modules
+
+# Python Backend
+python-backend/venv/
+python-backend/__pycache__/
+python-backend/**/__pycache__/
+python-backend/*.py[cod]
+python-backend/*$py.class
+python-backend/.pytest_cache/
+python-backend/.coverage
+python-backend/htmlcov/
+python-backend/dist/
+python-backend/build/
+python-backend/*.egg-info/
+
+# NestJS Backend
+nestjs-backend/node_modules/
+nestjs-backend/dist/
+nestjs-backend/coverage/
+nestjs-backend/logs/
+nestjs-backend/npm-debug.log*
+nestjs-backend/yarn-debug.log*
+nestjs-backend/yarn-error.log*
+
+# React Frontend
+react-frontend/node_modules/
+react-frontend/dist/
+react-frontend/build/
+react-frontend/coverage/
+react-frontend/.cache/
+react-frontend/npm-debug.log*
+react-frontend/yarn-debug.log*
+react-frontend/yarn-error.log*
+react-frontend/.next/
+react-frontend/.vercel/
+react-frontend/.env.development
+react-frontend/.env.production
+react-frontend/.pnp.*
+react-frontend/.eslintcache
+
+# JavaScript/TypeScript
+**/*.js.map
+**/*.d.ts
+**/.nyc_output
+**/.webpack
+**/tsconfig.tsbuildinfo
+**/.eslintcache
+
+# Testing
+**/coverage/
+**/.nyc_output/
+**/cypress/videos/
+**/cypress/screenshots/
+**/storybook-static/
+
+# Package managers
+**/yarn.lock
+**/package-lock.json
+**/.pnp
+**/.pnp.js
+**/.yarn/cache
+**/.yarn/unplugged
+**/.yarn/install-state.gz
+
+# Docker
+volumes/
+
 # Logs
 logs
 *.log
