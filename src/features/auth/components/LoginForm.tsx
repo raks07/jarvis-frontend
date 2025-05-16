@@ -1,23 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Paper,
-  Container,
-  Link,
-  InputAdornment,
-  IconButton,
-  Alert,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { login, clearError } from '@/store/slices/authSlice';
+import React, { useState } from "react";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { Box, TextField, Button, Typography, Paper, Container, Link, InputAdornment, IconButton, Alert, CircularProgress } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { login, clearError } from "@/store/slices/authSlice";
 
 interface LoginFormInputs {
   email: string;
@@ -25,8 +14,8 @@ interface LoginFormInputs {
 }
 
 const schema = yup.object().shape({
-  email: yup.string().email('Must be a valid email').required('Email is required'),
-  password: yup.string().required('Password is required'),
+  email: yup.string().email("Must be a valid email").required("Email is required"),
+  password: yup.string().required("Password is required"),
 });
 
 const LoginForm: React.FC = () => {
@@ -42,17 +31,23 @@ const LoginForm: React.FC = () => {
   } = useForm<LoginFormInputs>({
     resolver: yupResolver(schema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
   const onSubmit = async (data: LoginFormInputs) => {
     try {
-      await dispatch(login(data)).unwrap();
-      navigate('/');
+      // Extract email and password to match the LoginDto in the backend
+      const credentials = {
+        email: data.email,
+        password: data.password,
+      };
+      await dispatch(login(credentials)).unwrap();
+      navigate("/");
     } catch (error) {
       // Error is handled in the slice
+      console.error("Login submission error:", error);
     }
   };
 
@@ -77,24 +72,7 @@ const LoginForm: React.FC = () => {
         )}
 
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Controller
-            name="email"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                autoComplete="email"
-                autoFocus
-                error={!!errors.email}
-                helperText={errors.email?.message}
-              />
-            )}
-          />
+          <Controller name="email" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth id="email" label="Email Address" autoComplete="email" autoFocus error={!!errors.email} helperText={errors.email?.message} />} />
           <Controller
             name="password"
             control={control}
@@ -105,7 +83,7 @@ const LoginForm: React.FC = () => {
                 required
                 fullWidth
                 label="Password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 autoComplete="current-password"
                 error={!!errors.password}
@@ -113,11 +91,7 @@ const LoginForm: React.FC = () => {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleClickShowPassword}
-                        edge="end"
-                      >
+                      <IconButton aria-label="toggle password visibility" onClick={handleClickShowPassword} edge="end">
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
@@ -126,19 +100,12 @@ const LoginForm: React.FC = () => {
               />
             )}
           />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            sx={{ mt: 3, mb: 2 }}
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
+          <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3, mb: 2 }} disabled={loading} startIcon={loading && <CircularProgress size={20} color="inherit" />}>
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
           <Box display="flex" justifyContent="center">
             <Typography variant="body2">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <Link component={RouterLink} to="/register" variant="body2">
                 Sign Up
               </Link>

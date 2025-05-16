@@ -34,7 +34,9 @@ export const login = createAsyncThunk("auth/login", async (credentials: { email:
     const response = await loginService(credentials);
     return response.data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || "Login failed");
+    // Enhanced error handling with better messages
+    const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Login failed. Please check your credentials.";
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -44,7 +46,9 @@ export const register = createAsyncThunk("auth/register", async (userData: { use
     const response = await registerService(userData);
     return response.data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || "Registration failed");
+    // Enhanced error handling with better messages
+    const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Registration failed. The email may already be in use.";
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -54,16 +58,31 @@ export const checkAuth = createAsyncThunk("auth/check", async (_, { getState, re
     const { auth } = getState() as { auth: AuthState };
 
     if (!auth.token) {
+      console.log("No token found during auth check");
       return rejectWithValue("No token found");
     }
 
-    // Make actual API call to validate token
+    console.log("Verifying authentication token...");
+
+    // First validate the token locally using jwt-decode
+    const { isTokenValid } = await import("@/utils/auth");
+    if (!isTokenValid(auth.token)) {
+      console.log("Token is invalid or expired based on local check");
+      localStorage.removeItem("auth_token");
+      return rejectWithValue("Token expired. Please sign in again.");
+    }
+
+    // Then make API call to validate token on the server
     const { validateToken } = await import("@/services/auth.service");
     const response = await validateToken(auth.token);
+    console.log("Authentication verified successfully");
     return response.data;
   } catch (error: any) {
+    // Clean up invalid token
     localStorage.removeItem("auth_token");
-    return rejectWithValue(error.response?.data?.message || "Authentication failed");
+    console.error("Auth check failed:", error);
+    const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Your session has expired. Please sign in again.";
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -126,17 +145,20 @@ const authSlice = createSlice({
     // Check Auth
     builder.addCase(checkAuth.pending, (state) => {
       state.loading = true;
+      state.error = null;
     });
     builder.addCase(checkAuth.fulfilled, (state, action) => {
       state.loading = false;
       state.user = action.payload.user;
       state.isAuthenticated = true;
+      // Don't overwrite token as we're just validating it
     });
-    builder.addCase(checkAuth.rejected, (state) => {
+    builder.addCase(checkAuth.rejected, (state, action) => {
       state.loading = false;
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.error = action.payload as string;
       localStorage.removeItem("auth_token");
     });
   },

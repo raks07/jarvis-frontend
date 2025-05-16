@@ -1,23 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Paper,
-  Container,
-  Link,
-  InputAdornment,
-  IconButton,
-  Alert,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { register as registerAction, clearError } from '@/store/slices/authSlice';
+import React, { useState } from "react";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { Box, TextField, Button, Typography, Paper, Container, Link, InputAdornment, IconButton, Alert, CircularProgress } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { register as registerAction, clearError } from "@/store/slices/authSlice";
 
 interface RegisterFormInputs {
   username: string;
@@ -27,16 +16,13 @@ interface RegisterFormInputs {
 }
 
 const schema = yup.object().shape({
-  username: yup.string().required('Username is required'),
-  email: yup.string().email('Must be a valid email').required('Email is required'),
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(8, 'Password must be at least 8 characters'),
+  username: yup.string().required("Username is required"),
+  email: yup.string().email("Must be a valid email").required("Email is required"),
+  password: yup.string().required("Password is required").min(8, "Password must be at least 8 characters"),
   confirmPassword: yup
     .string()
-    .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('Confirm password is required'),
+    .oneOf([yup.ref("password")], "Passwords must match")
+    .required("Confirm password is required"),
 });
 
 const RegisterForm: React.FC = () => {
@@ -52,20 +38,23 @@ const RegisterForm: React.FC = () => {
   } = useForm<RegisterFormInputs>({
     resolver: yupResolver(schema),
     defaultValues: {
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
   const onSubmit = async (data: RegisterFormInputs) => {
     try {
+      // Extract only the fields needed by the backend (matches CreateUserDto)
       const { username, email, password } = data;
       await dispatch(registerAction({ username, email, password })).unwrap();
-      navigate('/');
+      // On successful registration, navigate to dashboard
+      navigate("/");
     } catch (error) {
       // Error is handled in the slice
+      console.error("Registration submission error:", error);
     }
   };
 
@@ -90,41 +79,8 @@ const RegisterForm: React.FC = () => {
         )}
 
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Controller
-            name="username"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                id="username"
-                label="Username"
-                autoComplete="username"
-                autoFocus
-                error={!!errors.username}
-                helperText={errors.username?.message}
-              />
-            )}
-          />
-          <Controller
-            name="email"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                autoComplete="email"
-                error={!!errors.email}
-                helperText={errors.email?.message}
-              />
-            )}
-          />
+          <Controller name="username" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth id="username" label="Username" autoComplete="username" autoFocus error={!!errors.username} helperText={errors.username?.message} />} />
+          <Controller name="email" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth id="email" label="Email Address" autoComplete="email" error={!!errors.email} helperText={errors.email?.message} />} />
           <Controller
             name="password"
             control={control}
@@ -135,7 +91,7 @@ const RegisterForm: React.FC = () => {
                 required
                 fullWidth
                 label="Password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 autoComplete="new-password"
                 error={!!errors.password}
@@ -143,11 +99,7 @@ const RegisterForm: React.FC = () => {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleClickShowPassword}
-                        edge="end"
-                      >
+                      <IconButton aria-label="toggle password visibility" onClick={handleClickShowPassword} edge="end">
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
@@ -156,37 +108,13 @@ const RegisterForm: React.FC = () => {
               />
             )}
           />
-          <Controller
-            name="confirmPassword"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                label="Confirm Password"
-                type={showPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                autoComplete="new-password"
-                error={!!errors.confirmPassword}
-                helperText={errors.confirmPassword?.message}
-              />
-            )}
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            sx={{ mt: 3, mb: 2 }}
-            disabled={loading}
-          >
-            {loading ? 'Signing up...' : 'Sign Up'}
+          <Controller name="confirmPassword" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth label="Confirm Password" type={showPassword ? "text" : "password"} id="confirmPassword" autoComplete="new-password" error={!!errors.confirmPassword} helperText={errors.confirmPassword?.message} />} />
+          <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3, mb: 2 }} disabled={loading} startIcon={loading && <CircularProgress size={20} color="inherit" />}>
+            {loading ? "Signing up..." : "Sign Up"}
           </Button>
           <Box display="flex" justifyContent="center">
             <Typography variant="body2">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link component={RouterLink} to="/login" variant="body2">
                 Sign In
               </Link>
