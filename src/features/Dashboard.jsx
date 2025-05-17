@@ -4,6 +4,11 @@ import { Dashboard as DashboardIcon, Description as DocumentIcon, QuestionAnswer
 
 import PageHeader from "@/components/common/PageHeader";
 import { useAppSelector } from "@/store/hooks";
+import * as documentsService from "@/services/documents.service";
+import * as ingestionService from "@/services/ingestion.service";
+import * as qaService from "@/services/qa.service";
+import LoadingCard from "@/components/common/LoadingCard";
+import ErrorCard from "@/components/common/ErrorCard";
 
 const Dashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -16,74 +21,58 @@ const Dashboard = () => {
   const [recentDocuments, setRecentDocuments] = useState([]);
   const [recentQuestions, setRecentQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user && user.id) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
+    setError(null);
 
     try {
-      // This would be replaced with actual API calls
+      // Get documents data
+      const documentsResponse = await documentsService.getDocuments();
+      const documents = documentsResponse.data;
 
-      // Simulate API call with mock data
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Get ingestions data
+      const ingestionsResponse = await ingestionService.getIngestions();
+      const ingestions = ingestionsResponse.data;
 
-      // Mock stats data
-      const mockStats = {
-        documentsCount: 5,
-        ingestionsCount: 8,
-        completedIngestionsCount: 6,
-        qaCount: 12,
+      // Get QA sessions
+      const qaSessions = await qaService.getQASessions(user.id);
+
+      // Calculate the stats
+      const statsData = {
+        documentsCount: documents.length,
+        ingestionsCount: ingestions.length,
+        completedIngestionsCount: ingestions.filter((ing) => ing.status === "completed").length,
+        qaCount: qaSessions.data.reduce((total, session) => total + session.questions.length, 0),
       };
 
-      // Mock recent documents
-      const mockRecentDocuments = [
-        {
-          id: "1",
-          title: "Company Policy Document",
-          uploadedBy: "admin",
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "2",
-          title: "Technical Documentation",
-          uploadedBy: "editor",
-          createdAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "3",
-          title: "Research Paper",
-          uploadedBy: "editor",
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
+      // Get the most recent documents (up to 5)
+      const sortedDocuments = [...documents].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
 
-      // Mock recent questions
-      const mockRecentQuestions = [
-        {
-          id: "1",
-          text: "What is the company policy on remote work?",
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "2",
-          text: "How do I set up two-factor authentication?",
-          createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "3",
-          text: "What are the key findings in the research paper?",
-          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
+      // Get the most recent questions from all sessions (up to 5)
+      const allQuestions = qaSessions.data.flatMap((session) =>
+        session.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          createdAt: q.timestamp,
+        }))
+      );
 
-      setStats(mockStats);
-      setRecentDocuments(mockRecentDocuments);
-      setRecentQuestions(mockRecentQuestions);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+      const sortedQuestions = allQuestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+
+      setStats(statsData);
+      setRecentDocuments(sortedDocuments);
+      setRecentQuestions(sortedQuestions);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      setError("Failed to fetch dashboard data: " + (err.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -93,6 +82,24 @@ const Dashboard = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
+
+  if (loading) {
+    return (
+      <Box p={3}>
+        <PageHeader title={`Welcome, ${user?.username || "User"}`} subtitle="Dashboard overview of your document management system" icon={<DashboardIcon />} />
+        <LoadingCard title="Loading Dashboard" message="Please wait while we load your dashboard data..." />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={3}>
+        <PageHeader title={`Welcome, ${user?.username || "User"}`} subtitle="Dashboard overview of your document management system" icon={<DashboardIcon />} />
+        <ErrorCard title="Error" message={error} onRetry={fetchDashboardData} />
+      </Box>
+    );
+  }
 
   return (
     <Box p={3}>
@@ -205,7 +212,7 @@ const Dashboard = () => {
                       <ListItemIcon>
                         <DocumentIcon color="primary" />
                       </ListItemIcon>
-                      <ListItemText primary={doc.title} secondary={`Uploaded by ${doc.uploadedBy} on ${formatDate(doc.createdAt)}`} />
+                      <ListItemText primary={doc.title} secondary={`Uploaded by ${doc.uploadedBy?.username || "Unknown"} on ${formatDate(doc.createdAt)}`} />
                     </ListItem>
                   </React.Fragment>
                 ))}

@@ -1,4 +1,4 @@
-import { nestJsApi } from './api';
+import { nestJsApi } from "./api";
 
 export interface Ingestion {
   id: string;
@@ -7,15 +7,20 @@ export interface Ingestion {
     id: string;
     title: string;
   };
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: "pending" | "processing" | "completed" | "failed";
   startedAt: string;
   completedAt: string | null;
   errorMessage: string | null;
+  metadata?: {
+    chunksProcessed?: number;
+    totalChunks?: number;
+    [key: string]: any;
+  };
 }
 
 // Ingestion service
 export const getIngestions = async () => {
-  return await nestJsApi.get<Ingestion[]>('/ingestion');
+  return await nestJsApi.get<Ingestion[]>("/ingestion");
 };
 
 export const getIngestionById = async (id: string) => {
@@ -27,7 +32,7 @@ export const getIngestionByDocumentId = async (documentId: string) => {
 };
 
 export const triggerIngestion = async (documentId: string) => {
-  return await nestJsApi.post<Ingestion>('/ingestion', { documentId });
+  return await nestJsApi.post<Ingestion>("/ingestion", { documentId });
 };
 
 export const cancelIngestion = async (id: string) => {

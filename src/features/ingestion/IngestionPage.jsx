@@ -1,26 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-} from '@mui/material';
-import { Sync as SyncIcon } from '@mui/icons-material';
+import React, { useState, useEffect } from "react";
+import { Box, Typography, Grid, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Tooltip } from "@mui/material";
+import { Sync as SyncIcon } from "@mui/icons-material";
 
-import PageHeader from '@/components/common/PageHeader';
-import IngestionCard from './components/IngestionCard';
-import LoadingCard from '@/components/common/LoadingCard';
-import ErrorCard from '@/components/common/ErrorCard';
+import PageHeader from "@/components/common/PageHeader";
+import IngestionCard from "./components/IngestionCard";
+import LoadingCard from "@/components/common/LoadingCard";
+import ErrorCard from "@/components/common/ErrorCard";
+
+// Import services
+import * as ingestionService from "@/services/ingestion.service";
+import * as documentsService from "@/services/documents.service";
+import { getUserFromToken } from "@/utils/auth";
 
 const IngestionPage = () => {
   const [ingestions, setIngestions] = useState([]);
@@ -28,134 +18,148 @@ const IngestionPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState("");
+  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
+    // Get user role from token
+    const token = localStorage.getItem("auth_token");
+    const user = getUserFromToken(token);
+    if (user) {
+      setUserRole(user.role);
+    }
+
     fetchData();
+
+    // Set up polling for ingestion status updates
+    const interval = setInterval(() => {
+      // Only refresh if there are pending or processing ingestions
+      if (ingestions.some((ing) => ing.status === "pending" || ing.status === "processing")) {
+        fetchIngestions();
+      }
+    }, 5000); // Check every 5 seconds
+
+    setRefreshInterval(interval);
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
+
+  // Update the refresh logic when ingestions change
+  useEffect(() => {
+    if (!refreshInterval) return;
+
+    // If there are no more pending/processing ingestions, clear the interval
+    if (!ingestions.some((ing) => ing.status === "pending" || ing.status === "processing")) {
+      clearInterval(refreshInterval);
+      setRefreshInterval(null);
+    }
+  }, [ingestions, refreshInterval]);
+
+  // Check if user has permission to trigger ingestion
+  const canTriggerIngestion = userRole === "admin" || userRole === "editor";
+
+  // Show error message if user doesn't have permission
+  useEffect(() => {
+    if (userRole && !canTriggerIngestion) {
+      setError("You don't have permission to trigger ingestion. Contact an admin for assistance.");
+    }
+  }, [userRole]);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // This would be replaced with actual API calls
-      // const ingestionsResponse = await ingestionService.getIngestions();
-      // const documentsResponse = await documentsService.getDocuments();
-
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock ingestions data
-      const mockIngestions = [
-        {
-          id: '1',
-          document: { id: '1', title: 'Company Policy Document' },
-          status: 'completed',
-          startedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-          completedAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: '2',
-          document: { id: '2', title: 'Technical Documentation' },
-          status: 'processing',
-          startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          completedAt: null,
-        },
-        {
-          id: '3',
-          document: { id: '3', title: 'Research Paper' },
-          status: 'failed',
-          startedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          completedAt: new Date(Date.now() - 4.8 * 60 * 60 * 1000).toISOString(),
-          errorMessage: 'Failed to process document: Invalid format',
-        },
-      ];
-
-      // Mock documents data
-      const mockDocuments = [
-        {
-          id: '1',
-          title: 'Company Policy Document',
-        },
-        {
-          id: '2',
-          title: 'Technical Documentation',
-        },
-        {
-          id: '3',
-          title: 'Research Paper',
-        },
-        {
-          id: '4',
-          title: 'Project Report',
-        },
-      ];
-
-      setIngestions(mockIngestions);
-      setDocuments(mockDocuments);
+      await Promise.all([fetchIngestions(), fetchDocuments()]);
     } catch (err) {
-      setError('Failed to fetch data: ' + (err.message || 'Unknown error'));
+      setError("Failed to fetch data: " + (err.message || "Unknown error"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchIngestions = async () => {
+    try {
+      const ingestionsResponse = await ingestionService.getIngestions();
+      setIngestions(ingestionsResponse.data);
+      return ingestionsResponse.data;
+    } catch (err) {
+      console.error("Error fetching ingestions:", err);
+      throw err;
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const documentsResponse = await documentsService.getDocuments();
+      setDocuments(documentsResponse.data);
+      return documentsResponse.data;
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      throw err;
     }
   };
 
   const handleIngestDocument = async () => {
     if (!selectedDocument) return;
 
+    // Double-check permissions (should already be checked by button disabled state)
+    if (!canTriggerIngestion) {
+      setError("You don't have permission to trigger ingestion. Contact an admin for assistance.");
+      return;
+    }
+
+    setError(null); // Clear any previous errors
+
     try {
-      // This would be replaced with actual API call
-      // await ingestionService.createIngestion({ documentId: selectedDocument });
+      // Start ingestion with the selected document
+      await ingestionService.triggerIngestion(selectedDocument);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Refresh the ingestion list
+      await fetchIngestions();
 
-      // Create a mock new ingestion
-      const newDocument = documents.find(doc => doc.id === selectedDocument);
-      const newIngestion = {
-        id: Date.now().toString(),
-        document: newDocument,
-        status: 'pending',
-        startedAt: new Date().toISOString(),
-        completedAt: null,
-      };
+      // Start polling for updates if not already running
+      if (!refreshInterval) {
+        const interval = setInterval(() => {
+          fetchIngestions();
+        }, 5000); // Check every 5 seconds
 
-      setIngestions([newIngestion, ...ingestions]);
+        setRefreshInterval(interval);
+      }
+
       setOpenDialog(false);
-      setSelectedDocument('');
+      setSelectedDocument("");
     } catch (err) {
-      setError('Failed to start ingestion: ' + (err.message || 'Unknown error'));
+      console.error("Ingestion error:", err);
+
+      if (err.response && err.response.status === 403) {
+        setError("Permission denied: You don't have the required role (admin or editor) to trigger ingestion.");
+      } else {
+        setError("Failed to start ingestion: " + (err.message || "Unknown error"));
+      }
     }
   };
 
   const handleCancelIngestion = async (id) => {
     try {
-      // This would be replaced with actual API call
-      // await ingestionService.cancelIngestion(id);
+      await ingestionService.cancelIngestion(id);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Update local state
-      setIngestions(ingestions.map(ing =>
-        ing.id === id
-          ? { ...ing, status: 'failed', errorMessage: 'Cancelled by user', completedAt: new Date().toISOString() }
-          : ing
-      ));
+      // Refresh the ingestion list
+      await fetchIngestions();
     } catch (err) {
-      setError('Failed to cancel ingestion: ' + (err.message || 'Unknown error'));
+      setError("Failed to cancel ingestion: " + (err.message || "Unknown error"));
     }
   };
 
   if (loading) {
     return (
       <Box p={3}>
-        <PageHeader
-          title="Ingestion"
-          subtitle="Manage document ingestion processes"
-          icon={<SyncIcon />}
-        />
+        <PageHeader title="Ingestion" subtitle="Manage document ingestion processes" icon={<SyncIcon />} />
         <LoadingCard title="Loading" message="Please wait while we load ingestion data..." />
       </Box>
     );
@@ -164,23 +168,14 @@ const IngestionPage = () => {
   if (error && ingestions.length === 0) {
     return (
       <Box p={3}>
-        <PageHeader
-          title="Ingestion"
-          subtitle="Manage document ingestion processes"
-          icon={<SyncIcon />}
-        />
+        <PageHeader title="Ingestion" subtitle="Manage document ingestion processes" icon={<SyncIcon />} />
         <ErrorCard title="Error" message={error} onRetry={fetchData} />
       </Box>
     );
   }
 
   // Get the list of documents that haven't been ingested
-  const notIngestedDocuments = documents.filter(
-    doc => !ingestions.some(ing =>
-      ing.document.id === doc.id &&
-      (ing.status === 'pending' || ing.status === 'processing')
-    )
-  );
+  const notIngestedDocuments = documents.filter((doc) => !ingestions.some((ing) => ing.document.id === doc.id && (ing.status === "pending" || ing.status === "processing")));
 
   return (
     <Box p={3}>
@@ -189,25 +184,17 @@ const IngestionPage = () => {
         subtitle="Manage document ingestion processes"
         icon={<SyncIcon />}
         action={
-          <Button
-            variant="contained"
-            startIcon={<SyncIcon />}
-            onClick={() => setOpenDialog(true)}
-            disabled={notIngestedDocuments.length === 0}
-          >
-            Ingest Document
-          </Button>
+          <Tooltip title={!canTriggerIngestion ? "You need admin or editor permissions to trigger ingestion" : notIngestedDocuments.length === 0 ? "No documents available for ingestion" : ""}>
+            <span>
+              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => setOpenDialog(true)} disabled={notIngestedDocuments.length === 0 || !canTriggerIngestion}>
+                Ingest Document
+              </Button>
+            </span>
+          </Tooltip>
         }
       />
 
-      {error && (
-        <ErrorCard
-          title="Error"
-          message={error}
-          onRetry={fetchData}
-          sx={{ mb: 3 }}
-        />
-      )}
+      {error && <ErrorCard title="Error" message={error} onRetry={fetchData} sx={{ mb: 3 }} />}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
@@ -218,17 +205,13 @@ const IngestionPage = () => {
               </Typography>
 
               {ingestions.length === 0 ? (
-                <Typography variant="body1" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
                   No ingestion processes found. Start by clicking "Ingest Document".
                 </Typography>
               ) : (
                 <Box>
                   {ingestions.map((ingestion) => (
-                    <IngestionCard
-                      key={ingestion.id}
-                      ingestion={ingestion}
-                      onCancel={handleCancelIngestion}
-                    />
+                    <IngestionCard key={ingestion.id} ingestion={ingestion} onCancel={handleCancelIngestion} />
                   ))}
                 </Box>
               )}
@@ -242,9 +225,7 @@ const IngestionPage = () => {
               <Typography variant="h6" gutterBottom>
                 About Ingestion
               </Typography>
-              <Typography variant="body2">
-                Document ingestion is the process of extracting text from your documents, splitting it into manageable chunks, and generating embeddings for retrieval-based question answering.
-              </Typography>
+              <Typography variant="body2">Document ingestion is the process of extracting text from your documents, splitting it into manageable chunks, and generating embeddings for retrieval-based question answering.</Typography>
 
               <Typography variant="body2" sx={{ mt: 2 }}>
                 <strong>Why ingest?</strong> Ingestion enables the system to quickly find relevant information when you ask questions, making the Q&A feature more accurate and efficient.
@@ -271,27 +252,22 @@ const IngestionPage = () => {
       </Grid>
 
       {/* Ingest Document Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Ingest Document</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
             Select a document to ingest for question answering. This process extracts text and generates embeddings.
           </Typography>
 
+          {error && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+          )}
+
           <FormControl fullWidth sx={{ mt: 1 }}>
             <InputLabel id="document-selection-label">Document</InputLabel>
-            <Select
-              labelId="document-selection-label"
-              id="document-selection"
-              value={selectedDocument}
-              onChange={(e) => setSelectedDocument(e.target.value)}
-              label="Document"
-            >
+            <Select labelId="document-selection-label" id="document-selection" value={selectedDocument} onChange={(e) => setSelectedDocument(e.target.value)} label="Document">
               {notIngestedDocuments.map((doc) => (
                 <MenuItem key={doc.id} value={doc.id}>
                   {doc.title}
@@ -302,11 +278,7 @@ const IngestionPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button
-            onClick={handleIngestDocument}
-            variant="contained"
-            disabled={!selectedDocument}
-          >
+          <Button onClick={handleIngestDocument} variant="contained" disabled={!selectedDocument || !canTriggerIngestion}>
             Start Ingestion
           </Button>
         </DialogActions>

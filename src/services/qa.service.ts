@@ -1,4 +1,4 @@
-import { pythonApi } from './api';
+import { pythonApi } from "./api";
 
 export interface Question {
   text: string;
@@ -38,11 +38,11 @@ export interface QASession {
 
 // Q&A service
 export const askQuestion = async (question: Question) => {
-  return await pythonApi.post<Answer>('/qa', question);
+  return await pythonApi.post<Answer>("/qa", question);
 };
 
-export const getQASessions = async () => {
-  return await pythonApi.get<QASession[]>('/qa/history');
+export const getQASessions = async (userId: string) => {
+  return await pythonApi.get<QASession[]>("/qa/history", { params: { user_id: userId } });
 };
 
 export const getQASessionById = async (id: string) => {
@@ -50,9 +50,9 @@ export const getQASessionById = async (id: string) => {
 };
 
 export const selectDocuments = async (documentIds: string[]) => {
-  return await pythonApi.post('/selection', { documentIds });
+  return await pythonApi.post("/selection", { documentIds });
 };
 
 export const getSelectedDocuments = async () => {
-  return await pythonApi.get<string[]>('/selection');
+  return await pythonApi.get<string[]>("/selection");
 };
