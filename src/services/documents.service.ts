@@ -1,4 +1,4 @@
-import { nestJsApi } from './api';
+import { nestJsApi } from "./api";
 
 export interface Document {
   id: string;
@@ -28,7 +28,7 @@ export interface UpdateDocumentRequest {
 
 // Document service
 export const getDocuments = async () => {
-  return await nestJsApi.get<Document[]>('/documents');
+  return await nestJsApi.get<Document[]>("/documents");
 };
 
 export const getDocumentById = async (id: string) => {
@@ -37,13 +37,13 @@ export const getDocumentById = async (id: string) => {
 
 export const uploadDocument = async (documentData: CreateDocumentRequest) => {
   const formData = new FormData();
-  formData.append('title', documentData.title);
-  formData.append('description', documentData.description);
-  formData.append('file', documentData.file);
+  formData.append("title", documentData.title);
+  formData.append("description", documentData.description);
+  formData.append("file", documentData.file);
 
-  return await nestJsApi.post<Document>('/documents', formData, {
+  return await nestJsApi.post<Document>("/documents", formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
 };
@@ -54,4 +54,13 @@ export const updateDocument = async (id: string, documentData: UpdateDocumentReq
 
 export const deleteDocument = async (id: string) => {
   return await nestJsApi.delete(`/documents/${id}`);
+};
+
+export const getDocumentContent = async (id: string) => {
+  return await nestJsApi.get(`/documents/${id}/content`, {
+    responseType: "blob",
+    headers: {
+      Accept: "*/*",
+    },
+  });
 };
