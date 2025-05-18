@@ -4,7 +4,7 @@ import { QuestionAnswer as QuestionAnswerIcon } from "@mui/icons-material";
 
 import PageHeader from "@/components/common/PageHeader";
 import QAForm from "./components/QAForm";
-import AnswerCard from "./components/AnswerCard";
+import AnswerCard from "./components/AnswerCard.tsx";
 import LoadingCard from "@/components/common/LoadingCard";
 import ErrorCard from "@/components/common/ErrorCard";
 

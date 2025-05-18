@@ -1,0 +1,11 @@
+# Testing
+/coverage
+.nyc_output
+junit.xml
+
+# Jest cache
+.jest
+
+# Build artifacts
+/dist
+/build
