@@ -1,82 +1,50 @@
-import jwtDecode from "jwt-decode";
-
 /**
- * Debug utility to help diagnose authentication issues
+ * Helper function to debug authentication state
+ * Only used in development mode
  */
 export const debugAuthInfo = () => {
-  try {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      console.log("Debug: No auth token found in localStorage");
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(token);
-      console.log("Debug: JWT decoded successfully", {
-        ...decoded,
-        // Don't print the full token in logs
-        token: `${token.substring(0, 15)}...${token.substring(token.length - 10)}`,
-      });
-
-      // Check token expiration
-      const currentTime = Date.now() / 1000;
-      const exp = (decoded as any).exp;
-      if (exp) {
-        const expiresIn = exp - currentTime;
-        console.log(`Debug: Token ${expiresIn > 0 ? "is valid" : "has expired"}`);
-        console.log(`Debug: Token ${expiresIn > 0 ? `expires in ${Math.round(expiresIn / 60)} minutes` : "expired"}`);
-      } else {
-        console.log("Debug: Token has no expiration");
-      }
-    } catch (decodeError) {
-      console.error("Debug: Failed to decode token", decodeError);
-    }
-  } catch (error) {
-    console.error("Debug: Auth check error", error);
-  }
-};
-
-/**
- * Get useful debugging information about the current authentication state
- */
-export const getAuthDebugInfo = () => {
-  const token = localStorage.getItem("auth_token");
-  const authState = {
-    hasToken: !!token,
-    tokenLength: token ? token.length : 0,
-  };
-
+  const token = localStorage.getItem('auth_token');
+  
   if (token) {
     try {
-      const decoded = jwtDecode(token) as any;
-      const currentTime = Date.now() / 1000;
-
-      return {
-        ...authState,
-        decoded: {
-          sub: decoded.sub,
-          email: decoded.email,
-          username: decoded.username,
-          role: decoded.role,
-          exp: decoded.exp,
-          iat: decoded.iat,
-        },
-        isExpired: decoded.exp < currentTime,
-        expiresIn: Math.round((decoded.exp - currentTime) / 60), // minutes
-      };
-    } catch (error) {
-      return {
-        ...authState,
-        decodeError: "Failed to decode token",
-      };
+      // Try to parse the token (JWT format: header.payload.signature)
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      
+      const payload = JSON.parse(jsonPayload);
+      
+      // Calculate expiration
+      if (payload.exp) {
+        const expTimeMs = payload.exp * 1000; // Convert from seconds to milliseconds
+        const now = Date.now();
+        const timeLeft = expTimeMs - now;
+        const minutesLeft = Math.floor(timeLeft / 60000);
+        
+        console.log('%cAuth Debug Info', 'background: #1976d2; color: white; padding: 2px 6px; border-radius: 4px;');
+        console.log('Token present:', !!token);
+        console.log('Token expires in:', `${minutesLeft} minutes`);
+        console.log('User ID:', payload.sub);
+        console.log('User email:', payload.email);
+        console.log('User role:', payload.role);
+        
+        // Check if token is expired
+        if (timeLeft <= 0) {
+          console.warn('%cToken is EXPIRED', 'background: #d32f2f; color: white; padding: 2px 6px; border-radius: 4px;');
+        } else if (minutesLeft < 30) {
+          console.warn('%cToken will expire soon', 'background: #ed6c02; color: white; padding: 2px 6px; border-radius: 4px;');
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing authentication token:', e);
     }
+  } else {
+    console.log('%cAuth Debug Info', 'background: #1976d2; color: white; padding: 2px 6px; border-radius: 4px;');
+    console.log('No authentication token found');
   }
-
-  return authState;
-};
-
-export default {
-  debugAuthInfo,
-  getAuthDebugInfo,
 };

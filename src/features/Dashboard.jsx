@@ -43,29 +43,38 @@ const Dashboard = () => {
       const ingestions = ingestionsResponse.data;
 
       // Get QA sessions
-      const qaSessions = await qaService.getQASessions(user.id);
+      let qaSessions = { data: [] };
+      try {
+        qaSessions = await qaService.getQASessions(user.id);
+      } catch (err) {
+        console.error("Failed to fetch QA sessions:", err);
+        // Continue with empty QA sessions instead of failing the entire dashboard
+      }
 
       // Calculate the stats
       const statsData = {
         documentsCount: documents.length,
         ingestionsCount: ingestions.length,
         completedIngestionsCount: ingestions.filter((ing) => ing.status === "completed").length,
-        qaCount: qaSessions.data.reduce((total, session) => total + session.questions.length, 0),
+        qaCount: qaSessions.data ? qaSessions.data.reduce((total, session) => total + session.questions.length, 0) : 0,
       };
 
       // Get the most recent documents (up to 5)
       const sortedDocuments = [...documents].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
 
       // Get the most recent questions from all sessions (up to 5)
-      const allQuestions = qaSessions.data.flatMap((session) =>
-        session.questions.map((q) => ({
-          id: q.id,
-          text: q.text,
-          createdAt: q.timestamp,
-        }))
-      );
+      let allQuestions = [];
+      if (qaSessions.data && Array.isArray(qaSessions.data)) {
+        allQuestions = qaSessions.data.flatMap((session) =>
+          (session.questions || []).map((q) => ({
+            id: q.id,
+            text: q.text,
+            createdAt: q.timestamp,
+          }))
+        );
+      }
 
-      const sortedQuestions = allQuestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+      const sortedQuestions = allQuestions.length > 0 ? allQuestions.sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime()).slice(0, 5) : [];
 
       setStats(statsData);
       setRecentDocuments(sortedDocuments);

@@ -28,8 +28,58 @@ function App() {
       debugAuthInfo();
     }
 
-    // Check authentication on app load
-    dispatch(checkAuth());
+    // Check authentication on app load - this is crucial for page refreshes
+    const checkUserAuth = () => {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        console.log("Found token in localStorage, validating...");
+        // First do a quick local check to avoid unnecessary API call
+        import("@/utils/auth").then(({ isTokenValid }) => {
+          const isValid = isTokenValid(token);
+
+          if (!isValid) {
+            console.log("Token is invalid locally, logging out");
+            localStorage.removeItem("auth_token");
+            return;
+          }
+
+          // If valid locally, verify with the server
+          dispatch(checkAuth())
+            .unwrap()
+            .then(() => console.log("Session restored successfully"))
+            .catch((error) => console.error("Failed to restore session:", error));
+        });
+      }
+    };
+
+    // Immediate check when component mounts
+    checkUserAuth();
+
+    // Also check when the window regains focus (user comes back to the tab)
+    const handleFocus = () => {
+      console.log("Window focused, checking authentication state");
+      checkUserAuth();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    // Set up regular token validation to maintain session
+    const tokenCheckInterval = setInterval(
+      () => {
+        const currentToken = localStorage.getItem("auth_token");
+        if (currentToken) {
+          // Only dispatch checkAuth if we have a token to validate
+          console.log("Running scheduled token validation");
+          dispatch(checkAuth());
+        }
+      },
+      15 * 60 * 1000
+    ); // Check every 15 minutes
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [dispatch]);
 
   return (

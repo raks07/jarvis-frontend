@@ -116,20 +116,60 @@ export const logout = async () => {
 
 export const validateToken = async (token: string) => {
   try {
+    console.log("Validating token with the server...");
     // For JwtAuthGuard to work correctly, we need to pass the token in the Authorization header
     // The interceptor in api.ts already adds the token if it exists in localStorage
     const response = await nestJsApi.post(
       "/auth/validate-token",
-      {},
+      {}, // No need to send the token in the body
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Adding timeout to prevent long hanging requests
+        timeout: 8000,
+        // Add retry configuration
+        validateStatus: (status) => status < 500, // Only retry on network errors, not 4xx errors
       }
     );
     console.log("Token validation successful");
+
+    // Get the token from the response if available (in case of token refresh)
+    // Otherwise use the existing token
+    const validToken = response.data?.token || token;
+
+    // Store the token in localStorage for persistence across page reloads
+    localStorage.setItem("auth_token", validToken);
+
+    // Log the token expiration time
+    const { isTokenValid, getTokenExpirationDate } = await import("@/utils/auth");
+    if (isTokenValid(validToken)) {
+      const expirationDate = getTokenExpirationDate(validToken);
+      console.log("Token valid until:", expirationDate);
+    }
+
     return response;
   } catch (error: any) {
+    // Check if token is still valid locally before giving up
+    try {
+      const { isTokenValid, getUserFromToken } = await import("@/utils/auth");
+      if (isTokenValid(token)) {
+        console.log("Network error but token still valid locally, using cached data");
+        const userData = getUserFromToken(token);
+        if (userData) {
+          // If network request fails but token is still valid, return a mock response
+          return {
+            data: {
+              user: userData,
+              token: token, // Keep using the existing token
+            },
+          };
+        }
+      }
+    } catch (localError) {
+      // If local validation fails too, proceed with original error
+    }
+
     // Log detailed error info for debugging
     if (error.response) {
       console.error("Token validation error response:", {

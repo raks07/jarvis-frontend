@@ -42,7 +42,13 @@ export const askQuestion = async (question: Question) => {
 };
 
 export const getQASessions = async (userId: string) => {
-  return await pythonApi.get<QASession[]>("/qa/history", { params: { user_id: userId } });
+  try {
+    return await pythonApi.get<QASession[]>("/qa/history", { params: { user_id: userId } });
+  } catch (error) {
+    console.error("Error fetching QA sessions:", error);
+    // Return an empty array wrapped in the same structure as a successful response
+    return { data: [] };
+  }
 };
 
 export const getQASessionById = async (id: string) => {

@@ -46,6 +46,21 @@ export const getUserFromToken = (token: string | null) => {
 };
 
 /**
+ * Gets token expiration date
+ */
+export const getTokenExpirationDate = (token: string | null): Date | null => {
+  if (!token) return null;
+
+  try {
+    const decoded: TokenPayload = jwtDecode(token);
+    return new Date(decoded.exp * 1000); // Convert from seconds to milliseconds
+  } catch (error) {
+    console.error("Error getting token expiration date:", error);
+    return null;
+  }
+};
+
+/**
  * Checks if a user has admin role
  */
 export const isAdmin = (role: string): boolean => {

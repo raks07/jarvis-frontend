@@ -17,7 +17,8 @@ const pythonApi = axios.create({
 });
 
 // Request interceptor to add auth token
-const requestInterceptor = (config: any) => {
+const requestInterceptor = (config) => {
+  // Always get the latest token from localStorage
   const token = localStorage.getItem("auth_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -25,51 +26,40 @@ const requestInterceptor = (config: any) => {
   return config;
 };
 
-nestJsApi.interceptors.request.use(requestInterceptor);
-pythonApi.interceptors.request.use(requestInterceptor);
+// Response error interceptor for global error handling
+const responseErrorInterceptor = (error) => {
+  // Handle 401 unauthorized error (token expired or invalid)
+  if (error.response && error.response.status === 401) {
+    // Check if the request was for token validation
+    const isValidationRequest = error.config?.url?.includes("/auth/validate-token");
 
-// Response interceptor to handle errors
-const responseErrorInterceptor = (error: any) => {
-  if (error.response) {
-    // The request was made and the server responded with a status code
-    // outside of the range of 2xx
-    console.error("API Error Response:", {
-      status: error.response.status,
-      data: error.response.data,
-      headers: error.response.headers,
-      url: error.config?.url,
-    });
-
-    // Handle 401 Unauthorized
-    if (error.response.status === 401) {
-      // Handle unauthorized access
+    if (isValidationRequest) {
+      // For validation requests, just clear the token without redirect
+      // This allows the auth slice to handle the redirect if needed
+      console.log("Token validation failed, clearing token");
       localStorage.removeItem("auth_token");
-      // Only redirect if not already on login page to prevent redirect loops
+    } else {
+      // For regular API requests, clear token and redirect if not on login page
+      localStorage.removeItem("auth_token");
       if (!window.location.pathname.includes("/login")) {
-        console.log("401 detected - Redirecting to login");
-        window.location.href = "/login";
+        console.log("API request unauthorized, redirecting to login");
+        window.location.href = "/login?session=expired";
       }
     }
+  }
 
-    // Handle 403 Forbidden - user doesn't have access rights
-    if (error.response.status === 403) {
-      console.error("403 Forbidden - Access denied");
-    }
-
-    // Handle 500 Server errors
-    if (error.response.status >= 500) {
-      console.error("Server error detected");
-    }
-  } else if (error.request) {
-    // The request was made but no response was received
-    console.error("API No Response:", error.request);
-  } else {
-    // Something happened in setting up the request
-    console.error("API Request Error:", error.message);
+  // Network errors
+  if (error.code === "ERR_NETWORK") {
+    console.error("Network error:", error.message);
+    // You could dispatch a global notification here
   }
 
   return Promise.reject(error);
 };
+
+// Apply interceptors to both API instances
+nestJsApi.interceptors.request.use(requestInterceptor, (error) => Promise.reject(error));
+pythonApi.interceptors.request.use(requestInterceptor, (error) => Promise.reject(error));
 
 nestJsApi.interceptors.response.use((response) => response, responseErrorInterceptor);
 

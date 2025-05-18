@@ -55,9 +55,16 @@ export const register = createAsyncThunk("auth/register", async (userData: { use
 // Check if user is authenticated based on token
 export const checkAuth = createAsyncThunk("auth/check", async (_, { getState, rejectWithValue }) => {
   try {
+    // Get auth state from Redux store
     const { auth } = getState() as { auth: AuthState };
 
-    if (!auth.token) {
+    // Try to get the token from localStorage first, as it's the source of truth
+    const localToken = localStorage.getItem("auth_token");
+
+    // Use either the token from localStorage or from the Redux state
+    const token = localToken || auth.token;
+
+    if (!token) {
       console.log("No token found during auth check");
       return rejectWithValue("No token found");
     }
@@ -65,18 +72,48 @@ export const checkAuth = createAsyncThunk("auth/check", async (_, { getState, re
     console.log("Verifying authentication token...");
 
     // First validate the token locally using jwt-decode
-    const { isTokenValid } = await import("@/utils/auth");
-    if (!isTokenValid(auth.token)) {
+    const { isTokenValid, getUserFromToken } = await import("@/utils/auth");
+    if (!isTokenValid(token)) {
       console.log("Token is invalid or expired based on local check");
       localStorage.removeItem("auth_token");
       return rejectWithValue("Token expired. Please sign in again.");
     }
 
-    // Then make API call to validate token on the server
-    const { validateToken } = await import("@/services/auth.service");
-    const response = await validateToken(auth.token);
-    console.log("Authentication verified successfully");
-    return response.data;
+    try {
+      // Then make API call to validate token on the server
+      const { validateToken } = await import("@/services/auth.service");
+      const response = await validateToken(token);
+      console.log("Authentication verified successfully by server");
+
+      // If we received a new token in the response (from token refresh), use it
+      const newToken = response.data?.token || token;
+      if (newToken !== token) {
+        console.log("Token has been refreshed");
+        localStorage.setItem("auth_token", newToken);
+      }
+
+      return {
+        ...response.data,
+        token: newToken, // Use the refreshed token if available
+      };
+    } catch (error: any) {
+      // If server validation fails but token is still valid locally,
+      // fall back to using local token info rather than logging user out immediately
+      // This helps when backend is briefly unavailable but token is still valid
+      if (isTokenValid(token)) {
+        console.log("Server validation failed but token is still valid locally, using cached user data");
+        const userData = getUserFromToken(token);
+        if (userData) {
+          return {
+            user: userData,
+            token,
+          };
+        }
+      }
+
+      // If we reach here, both server validation and local fallback failed
+      throw error;
+    }
   } catch (error: any) {
     // Clean up invalid token
     localStorage.removeItem("auth_token");
@@ -151,7 +188,13 @@ const authSlice = createSlice({
       state.loading = false;
       state.user = action.payload.user;
       state.isAuthenticated = true;
-      // Don't overwrite token as we're just validating it
+      state.token = action.payload.token; // Update token in store to match localStorage
+      // Ensure token is persisted in localStorage
+      localStorage.setItem("auth_token", action.payload.token);
+      console.log("Auth state updated successfully:", {
+        isAuthenticated: true,
+        username: action.payload.user?.username,
+      });
     });
     builder.addCase(checkAuth.rejected, (state, action) => {
       state.loading = false;
@@ -160,6 +203,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = action.payload as string;
       localStorage.removeItem("auth_token");
+      console.log("Auth check rejected, user logged out");
     });
   },
 });
