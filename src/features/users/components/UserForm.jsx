@@ -15,8 +15,12 @@ const createSchema = yup.object().shape({
 const editSchema = yup.object().shape({
   username: yup.string().required("Username is required"),
   email: yup.string().email("Must be a valid email").required("Email is required"),
-  password: yup.string().optional().nullable().transform(value => value === "" ? null : value)
-    .test("password", "Password must be at least 8 characters", value => {
+  password: yup
+    .string()
+    .optional()
+    .nullable()
+    .transform((value) => (value === "" ? null : value))
+    .test("password", "Password must be at least 8 characters", (value) => {
       if (!value) return true; // Skip validation if empty (not being updated)
       return value.length >= 8;
     }),
@@ -34,7 +38,7 @@ const UserForm = ({ onSubmit, initialData, loading, error, mode = "create" }) =>
     watch,
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: initialData 
+    defaultValues: initialData
       ? { ...initialData, password: "" } // Clear password when editing
       : {
           username: "",
@@ -47,12 +51,19 @@ const UserForm = ({ onSubmit, initialData, loading, error, mode = "create" }) =>
   // Handle form submit with clean data
   const handleFormSubmit = (data) => {
     const cleanData = { ...data };
-    
+
     // If editing and password is empty, remove it from the data
     if (mode === "edit" && !cleanData.password) {
       delete cleanData.password;
     }
-    
+
+    // When editing, remove id, createdAt, and updatedAt fields
+    if (mode === "edit") {
+      delete cleanData.id;
+      delete cleanData.createdAt;
+      delete cleanData.updatedAt;
+    }
+
     onSubmit(cleanData);
   };
 
@@ -65,63 +76,11 @@ const UserForm = ({ onSubmit, initialData, loading, error, mode = "create" }) =>
       )}
 
       <Box component="form" onSubmit={handleSubmit(handleFormSubmit)} noValidate>
-        <Controller 
-          name="username" 
-          control={control} 
-          render={({ field }) => (
-            <TextField 
-              {...field} 
-              margin="normal" 
-              required 
-              fullWidth 
-              id="username" 
-              label="Username" 
-              autoComplete="username" 
-              error={!!errors.username} 
-              helperText={errors.username?.message} 
-              disabled={loading} 
-            />
-          )} 
-        />
+        <Controller name="username" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth id="username" label="Username" autoComplete="username" error={!!errors.username} helperText={errors.username?.message} disabled={loading} />} />
 
-        <Controller 
-          name="email" 
-          control={control} 
-          render={({ field }) => (
-            <TextField 
-              {...field} 
-              margin="normal" 
-              required 
-              fullWidth 
-              id="email" 
-              label="Email Address" 
-              autoComplete="email" 
-              error={!!errors.email} 
-              helperText={errors.email?.message} 
-              disabled={loading} 
-            />
-          )} 
-        />
+        <Controller name="email" control={control} render={({ field }) => <TextField {...field} margin="normal" required fullWidth id="email" label="Email Address" autoComplete="email" error={!!errors.email} helperText={errors.email?.message} disabled={loading} />} />
 
-        <Controller 
-          name="password" 
-          control={control} 
-          render={({ field }) => (
-            <TextField 
-              {...field} 
-              margin="normal" 
-              required={mode === "create"} 
-              fullWidth 
-              id="password" 
-              label={mode === "create" ? "Password" : "Password (leave empty to keep current)"}
-              type="password" 
-              autoComplete={mode === "create" ? "new-password" : "off"} 
-              error={!!errors.password} 
-              helperText={errors.password?.message} 
-              disabled={loading} 
-            />
-          )} 
-        />
+        <Controller name="password" control={control} render={({ field }) => <TextField {...field} margin="normal" required={mode === "create"} fullWidth id="password" label={mode === "create" ? "Password" : "Password (leave empty to keep current)"} type="password" autoComplete={mode === "create" ? "new-password" : "off"} error={!!errors.password} helperText={errors.password?.message} disabled={loading} />} />
 
         <Controller
           name="role"
@@ -129,46 +88,30 @@ const UserForm = ({ onSubmit, initialData, loading, error, mode = "create" }) =>
           render={({ field }) => (
             <FormControl fullWidth margin="normal" error={!!errors.role}>
               <InputLabel id="role-label">Role</InputLabel>
-              <Select 
-                {...field} 
-                labelId="role-label" 
-                id="role" 
-                label="Role" 
-                disabled={loading}
-              >
+              <Select {...field} labelId="role-label" id="role" label="Role" disabled={loading}>
                 <MenuItem value="admin">Admin</MenuItem>
                 <MenuItem value="editor">Editor</MenuItem>
                 <MenuItem value="viewer">Viewer</MenuItem>
               </Select>
-              {errors.role && (
-                <FormHelperText error>{errors.role.message}</FormHelperText>
-              )}
+              {errors.role && <FormHelperText error>{errors.role.message}</FormHelperText>}
             </FormControl>
           )}
         />
 
         <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-          <Button 
-            type="button" 
-            onClick={() => reset()} 
-            sx={{ mr: 1 }} 
-            disabled={loading}
-          >
+          <Button type="button" onClick={() => reset()} sx={{ mr: 1 }} disabled={loading}>
             Reset
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary" 
-            disabled={loading}
-          >
+          <Button type="submit" variant="contained" color="primary" disabled={loading}>
             {loading ? (
               <>
                 <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
                 Saving...
               </>
+            ) : mode === "create" ? (
+              "Create User"
             ) : (
-              mode === "create" ? "Create User" : "Update User"
+              "Update User"
             )}
           </Button>
         </Box>

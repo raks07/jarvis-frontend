@@ -1,36 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  TablePagination,
-  IconButton, 
-  Chip, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  useTheme, 
-  useMediaQuery, 
-  Alert, 
-  Snackbar,
-  Tooltip,
-  CircularProgress
-} from "@mui/material";
-import { 
-  Add as AddIcon, 
-  Edit as EditIcon, 
-  Delete as DeleteIcon, 
-  People as PeopleIcon,
-  Refresh as RefreshIcon
-} from "@mui/icons-material";
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, IconButton, Chip, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, Alert, Snackbar, Tooltip, CircularProgress } from "@mui/material";
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 
 import PageHeader from "@/components/common/PageHeader";
 import UserForm from "./components/UserForm";
@@ -48,7 +18,7 @@ const UsersPage = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [notification, setNotification] = useState({ open: false, message: "", type: "success" });
-  
+
   // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -127,8 +97,11 @@ const UsersPage = () => {
     setFormLoading(true);
     setFormError(null);
 
+    // Clean the userData to ensure we're not sending forbidden fields
+    const { id, createdAt, updatedAt, ...cleanUserData } = userData;
+
     try {
-      const response = await updateUser(selectedUser.id, userData);
+      const response = await updateUser(selectedUser.id, cleanUserData);
 
       // Update user in local state
       setUsers(users.map((user) => (user.id === selectedUser.id ? response.data : user)));
@@ -198,7 +171,7 @@ const UsersPage = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleString();
   };
@@ -223,7 +196,7 @@ const UsersPage = () => {
 
   // Empty display for when no users are found
   const emptyRows = rowsPerPage - Math.min(rowsPerPage, users.length - page * rowsPerPage);
-  
+
   return (
     <Box p={3}>
       <PageHeader
@@ -244,7 +217,7 @@ const UsersPage = () => {
         }
       />
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper sx={{ width: "100%", overflow: "hidden" }}>
         <TableContainer>
           <Table>
             <TableHead>
@@ -267,35 +240,29 @@ const UsersPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                users
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((user) => (
-                    <TableRow key={user.id} hover>
-                      <TableCell>{user.username}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={user.role.charAt(0).toUpperCase() + user.role.slice(1)} 
-                          color={getRoleChipColor(user.role)} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell>{formatDate(user.createdAt)}</TableCell>
-                      <TableCell>{formatDate(user.updatedAt)}</TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Edit user">
-                          <IconButton aria-label="edit" color="primary" onClick={() => handleOpenEditDialog(user)}>
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete user">
-                          <IconButton aria-label="delete" color="error" onClick={() => handleDeleteUser(user.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Chip label={user.role.charAt(0).toUpperCase() + user.role.slice(1)} color={getRoleChipColor(user.role)} size="small" />
+                    </TableCell>
+                    <TableCell>{formatDate(user.createdAt)}</TableCell>
+                    <TableCell>{formatDate(user.updatedAt)}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Edit user">
+                        <IconButton aria-label="edit" color="primary" onClick={() => handleOpenEditDialog(user)}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete user">
+                        <IconButton aria-label="delete" color="error" onClick={() => handleDeleteUser(user.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
 
               {/* Add empty rows to maintain height consistency */}
@@ -307,39 +274,15 @@ const UsersPage = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        
-        {users.length > 0 && (
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={users.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        )}
+
+        {users.length > 0 && <TablePagination rowsPerPageOptions={[5, 10, 25]} component="div" count={users.length} rowsPerPage={rowsPerPage} page={page} onPageChange={handleChangePage} onRowsPerPageChange={handleChangeRowsPerPage} />}
       </Paper>
 
       {/* User Dialog */}
-      <Dialog 
-        open={openDialog} 
-        onClose={handleCloseDialog} 
-        maxWidth="sm" 
-        fullWidth 
-        fullScreen={fullScreen}
-      >
-        <DialogTitle>
-          {dialogMode === "create" ? "Create New User" : "Edit User"}
-        </DialogTitle>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={fullScreen}>
+        <DialogTitle>{dialogMode === "create" ? "Create New User" : "Edit User"}</DialogTitle>
         <DialogContent dividers>
-          <UserForm 
-            onSubmit={dialogMode === "create" ? handleCreateUser : handleUpdateUser}
-            initialData={selectedUser}
-            loading={formLoading}
-            error={formError}
-            mode={dialogMode}
-          />
+          <UserForm onSubmit={dialogMode === "create" ? handleCreateUser : handleUpdateUser} initialData={selectedUser} loading={formLoading} error={formError} mode={dialogMode} />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="inherit" disabled={formLoading}>
@@ -349,18 +292,8 @@ const UsersPage = () => {
       </Dialog>
 
       {/* Notification Snackbar */}
-      <Snackbar 
-        open={notification.open} 
-        autoHideDuration={6000} 
-        onClose={() => setNotification({ ...notification, open: false })} 
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert 
-          onClose={() => setNotification({ ...notification, open: false })} 
-          severity={notification.type} 
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
+      <Snackbar open={notification.open} autoHideDuration={6000} onClose={() => setNotification({ ...notification, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+        <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.type} variant="filled" sx={{ width: "100%" }}>
           {notification.message}
         </Alert>
       </Snackbar>
