@@ -28,6 +28,10 @@ export const getUsers = async () => {
   return await nestJsApi.get<User[]>('/users');
 };
 
+export const getUsersByRole = async (role: string) => {
+  return await nestJsApi.get<User[]>(`/users/role/${role}`);
+};
+
 export const getUserById = async (id: string) => {
   return await nestJsApi.get<User>(`/users/${id}`);
 };
@@ -37,7 +41,12 @@ export const createUser = async (userData: CreateUserRequest) => {
 };
 
 export const updateUser = async (id: string, userData: UpdateUserRequest) => {
-  return await nestJsApi.patch<User>(`/users/${id}`, userData);
+  // Filter out empty/undefined fields to avoid overwriting with empty values
+  const filteredData = Object.fromEntries(
+    Object.entries(userData).filter(([_, v]) => v !== null && v !== undefined && v !== '')
+  );
+  
+  return await nestJsApi.patch<User>(`/users/${id}`, filteredData);
 };
 
 export const deleteUser = async (id: string) => {

@@ -19,6 +19,7 @@ import {
   Container,
   useTheme,
   useMediaQuery,
+  ListItemButton,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -30,27 +31,28 @@ import {
   ExitToApp as LogoutIcon,
   AccountCircle as ProfileIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 
 const drawerWidth = 240;
 
-const MainLayout: React.FC = () => {
+const MainLayout = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -63,17 +65,21 @@ const MainLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const menuItems = [
+  // Define all menu items including Users
+  const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Documents', icon: <DocumentIcon />, path: '/documents' },
     { text: 'Ingestion', icon: <SyncIcon />, path: '/ingestion' },
     { text: 'Q&A', icon: <QAIcon />, path: '/qa' },
+    { text: 'Users', icon: <PeopleIcon />, path: '/users', requiredRole: 'admin' },
   ];
 
-  // Add Users menu item only for admin users
-  if (user?.role === 'admin') {
-    menuItems.push({ text: 'Users', icon: <PeopleIcon />, path: '/users' });
-  }
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item => {
+    if (!item.requiredRole) return true;
+    if (item.requiredRole === 'admin' && user?.role === 'admin') return true;
+    return false;
+  });
 
   const drawer = (
     <div>
@@ -84,21 +90,50 @@ const MainLayout: React.FC = () => {
       </Toolbar>
       <Divider />
       <List>
-        {menuItems.map((item) => (
-          <ListItem
-            button
-            key={item.text}
-            onClick={() => {
-              navigate(item.path);
-              if (isMobile) {
-                setMobileOpen(false);
-              }
-            }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
-          </ListItem>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path || 
+                         (item.path !== '/' && location.pathname.startsWith(item.path));
+                         
+          return (
+            <ListItem 
+              disablePadding 
+              key={item.text}
+            >
+              <ListItemButton
+                selected={isActive}
+                onClick={() => {
+                  navigate(item.path);
+                  if (isMobile) {
+                    setMobileOpen(false);
+                  }
+                }}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon 
+                  sx={{ 
+                    color: isActive ? 'primary.main' : 'inherit' 
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.text} 
+                  primaryTypographyProps={{ 
+                    fontWeight: isActive ? 'bold' : 'regular',
+                    color: isActive ? 'primary.main' : 'inherit',
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
     </div>
   );
@@ -135,8 +170,8 @@ const MainLayout: React.FC = () => {
               onClick={handleProfileMenuOpen}
               color="inherit"
             >
-              <Avatar sx={{ width: 32, height: 32 }}>
-                {user?.username.charAt(0).toUpperCase()}
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.dark' }}>
+                {user?.username?.charAt(0).toUpperCase() || 'U'}
               </Avatar>
             </IconButton>
             <Menu
@@ -153,6 +188,12 @@ const MainLayout: React.FC = () => {
               open={Boolean(anchorEl)}
               onClose={handleProfileMenuClose}
             >
+              <MenuItem disabled>
+                <Typography variant="body2" color="textSecondary">
+                  Signed in as: <strong>{user?.username || 'User'}</strong>
+                </Typography>
+              </MenuItem>
+              <Divider />
               <MenuItem>
                 <ListItemIcon>
                   <ProfileIcon fontSize="small" />
