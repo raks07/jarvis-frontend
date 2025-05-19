@@ -1,6 +1,6 @@
-# React Frontend for Document Management and RAG-based Q&A Application
+# jarvis-frontend: React Frontend for Document Management and RAG-based Q&A Application
 
-This component provides the user interface for user management, document management, ingestion management, and RAG-based Q&A.
+This component ([GitHub repository](https://github.com/raks07/jarvis-frontend)) provides the user interface for user management, document management, ingestion management, and RAG-based Q&A.
 
 ## Features
 
@@ -64,7 +64,7 @@ npm run build
 yarn build
 ```
 
-The development server will be available at http://localhost:5173.
+The development server will be available at <http://localhost:5173>.
 
 ## Project Structure
 

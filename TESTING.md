@@ -1,6 +1,6 @@
-# React Frontend Testing Strategy
+# jarvis-frontend Testing Strategy
 
-This document outlines the testing strategy for the Jarvis React Frontend application.
+This document outlines the testing strategy for the Jarvis Frontend application (<https://github.com/raks07/jarvis-frontend>).
 
 ## Testing Framework and Tools
 
@@ -135,9 +135,9 @@ describe('Button Component', () => {
   it('calls onClick handler when clicked', () => {
     const handleClick = jest.fn();
     render(<Button onClick={handleClick}>Click me</Button>);
-    
+
     fireEvent.click(screen.getByText('Click me'));
-    
+
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
